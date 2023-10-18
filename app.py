@@ -6,7 +6,7 @@ import math
 pygame.init()
 
 # Screen dimensions
-width, height = 800, 600
+width, height = 1000, 800
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Render Square")
 
@@ -14,58 +14,43 @@ pygame.display.set_caption("Render Square")
 white = (255, 255, 255)
 red = (255, 0, 0)
 black = (0, 0, 0)
+green = (0, 255, 0)
+blue  = (0, 0, 255)
 
 # Square properties
 square_size = 100
 square_x = (width - square_size) // 2
 square_y = (height - square_size) // 2
 
-def convert_degrees_to_2D(degrees):
-    radians = math.radians(degrees)
-    x = math.cos(radians)
-    y = math.sin(radians)
-    return x, y
 
 
 class Cube():
-    def __init__(self , x , y , z , width , height , depth , x_rotation , y_rotation , z_rotation):
+    def __init__(self , x , y , z , width , height , depth , x_rotation , y_rotation , z_rotation , color = white):
+        self.color = color
         self.coordinates = {
             'x' : x,
             'y' : y,
-            'z' : z
+            'z' : z,
+            'center_x': (x + x + width // 2),
+            'center_y': (y + y + height // 2),
+            'center_z': (z + z + depth // 2)
         }
         
+        self.dimensions = {
+            'width' : width,
+            'height' : height,
+            'depth' : depth
+        }
+    
         self.points = {
-            "A": {
-               "x" : x,
-               "y" : y,
-               "z" : z 
-            },
-            "B": {
-               "x" : x + width,
-               "y" : y,
-               "z" : z
-            },
-            "C": {
-               "x" : x + width,
-               "y" : y,
-               "z" : z + depth
-            },
-            "D": {
-               "x" : x,
-               "y" : y,
-               "z" : z + depth
-            },
-            "E": {
-               "x" : x,
-               "y" : y + height,
-               "z" : z
-            },
-            "F": {
-               "x" : x,
-               "y" : y + height,
-               "z" : z + depth
-            }
+            "A": {"x": x, "y": y, "z": z},
+            "B": {"x": x + width, "y": y, "z": z},
+            "C": {"x": x + width, "y": y + height, "z": z},
+            "D": {"x": x, "y": y + height, "z": z},
+            "E": {"x": x, "y": y, "z": z + depth},
+            "F": {"x": x + width, "y": y, "z": z + depth},
+            "G": {"x": x + width, "y": y + height, "z": z + depth},
+            "H": {"x": x, "y": y + height, "z": z + depth},
         }
         
         self.face = {
@@ -79,16 +64,33 @@ class Cube():
         
         self.vertex = {
             "AB": (self.points["A"], self.points["B"]),
-            "BC": (self.points["B"], self.points["C"]),
-            "CD": (self.points["C"], self.points["D"]),
-            "DA": (self.points["D"], self.points["A"]),
-            "BE": (self.points["E"], self.points["B"]),
-            "EF": (self.points["F"], self.points["E"]),
-            "FD": (self.points["F"], self.points["D"]),
-            "DC": (self.points["D"], self.points["C"]),
+            "AC": (self.points["A"], self.points["C"]),
+            "AD": (self.points["A"], self.points["D"]),
+            "AE": (self.points["A"], self.points["E"]),
             "AF": (self.points["A"], self.points["F"]),
+            "AG": (self.points["A"], self.points["G"]),
+            "AH": (self.points["A"], self.points["H"]),
+            "BC": (self.points["B"], self.points["C"]),
+            "BD": (self.points["B"], self.points["D"]),
+            "BE": (self.points["B"], self.points["E"]),
+            "BF": (self.points["B"], self.points["F"]),
+            "BG": (self.points["B"], self.points["G"]),
+            "BH": (self.points["B"], self.points["H"]),
+            "CD": (self.points["C"], self.points["D"]),
             "CE": (self.points["C"], self.points["E"]),
-            "BD": (self.points["B"], self.points["D"])
+            "CF": (self.points["C"], self.points["F"]),
+            "CG": (self.points["C"], self.points["G"]),
+            "CH": (self.points["C"], self.points["H"]),
+            "DE": (self.points["D"], self.points["E"]),
+            "DF": (self.points["D"], self.points["F"]),
+            "DG": (self.points["D"], self.points["G"]),
+            "DH": (self.points["D"], self.points["H"]),
+            "EF": (self.points["E"], self.points["F"]),
+            "EG": (self.points["E"], self.points["G"]),
+            "EH": (self.points["E"], self.points["H"]),
+            "FG": (self.points["F"], self.points["G"]),
+            "FH": (self.points["F"], self.points["H"]),
+            "GH": (self.points["G"], self.points["H"])
         }
         
         self.rotation = {
@@ -96,43 +98,207 @@ class Cube():
             'y' : y_rotation,
             'z' : z_rotation
         }
+    
+    
+    def rotate(self, x_rotation, y_rotation, z_rotation, camera , stay_center=True):
+        # If not staying at the center, calculate the offset from the camera's position
+        if stay_center == False:
+            x_offset = self.coordinates['x'] - camera.coordinates['x']
+            y_offset = self.coordinates['y'] - camera.coordinates['y']
+            z_offset = self.coordinates['z'] - camera.coordinates['z']
+        else:
+            x_offset, y_offset, z_offset = 0, 0, 0
+
+        # Translate the object to the origin
+        for point in self.points:
+            self.points[point]['x'] -= x_offset
+            self.points[point]['y'] -= y_offset
+            self.points[point]['z'] -= z_offset
+
+        if x_rotation != 0:
+            # Apply the rotation around the x-axis
+            for point in self.points:
+                y = self.points[point]['y']
+                z = self.points[point]['z']
+                self.points[point]['y'] = y * math.cos(math.radians(x_rotation)) - z * math.sin(math.radians(x_rotation))
+                self.points[point]['z'] = y * math.sin(math.radians(x_rotation)) + z * math.cos(math.radians(x_rotation))
+
+        if y_rotation != 0:
+            # Apply the rotation around the y-axis
+            for point in self.points:
+                x = self.points[point]['x']
+                z = self.points[point]['z']
+                self.points[point]['x'] = x * math.cos(math.radians(y_rotation)) + z * math.sin(math.radians(y_rotation))
+                self.points[point]['z'] = -x * math.sin(math.radians(y_rotation)) + z * math.cos(math.radians(y_rotation))
+
+        if z_rotation != 0:
+            # Apply the rotation around the z-axis
+            for point in self.points:
+                x = self.points[point]['x']
+                y = self.points[point]['y']
+                self.points[point]['x'] = x * math.cos(math.radians(z_rotation)) - y * math.sin(math.radians(z_rotation))
+                self.points[point]['y'] = x * math.sin(math.radians(z_rotation)) + y * math.cos(math.radians(z_rotation))
+
+        # Translate the object back to its original position
+        for point in self.points:
+            self.points[point]['x'] += x_offset
+            self.points[point]['y'] += y_offset
+            self.points[point]['z'] += z_offset
+    def update_all_data(self , x , y , z):
+        self.coordinates['x'] += x
+        self.coordinates['y'] += y
+        self.coordinates['z'] += z
+        
+        self.coordinates['center_x'] += x
+        self.coordinates['center_y'] += y
+        self.coordinates['center_z'] += z
+        
+        for point in self.points:
+            self.points[point]['x'] += x
+            self.points[point]['y'] += y
+            self.points[point]['z'] += z
+            self.points[point]['x'] += x
+            self.points[point]['y'] += y
+            self.points[point]['z'] += z
         
 
 
 class Camera():
-    def __init__(self , x , y , z , width , height , x_rotation , y_rotation):
+    def __init__(self , x , y , z):
         self.coordinates = {
             'x' : x,
             'y' : y,
             'z' : z
         }
-        self.camera = {
-            'width' : width,
-            'height' : height,
-        }
-        self.rotation = {
-            'x' : x_rotation,
-            'y' : y_rotation,
-        }
         
     def render(self, objects):
-        for depth in range(125, 0, -1):
-            for hight in range(self.camera['width']):
-                for width in range(self.camera["height"]):
-                    for object in objects:
-                        for vertex in object.vertex.keys():
-                            if depth in range(object.vertex[vertex][0]['z']-1,object.vertex[vertex][1]['z']+1):
-                                if hight in range(object.vertex[vertex][0]['y']-1,object.vertex[vertex][1]['y']+1):
-                                    # print((object.vertex[vertex][0]['z'],object.vertex[vertex][1]['z']))
-                                    # print(object.vertex[vertex][0]['x']-1,object.vertex[vertex][1]['x']+1)
-                                    if width in range(object.vertex[vertex][0]['x']-1,object.vertex[vertex][1]['x']+1):
-                                        pygame.draw.rect(screen, white, (width, hight, 1, 1))
-                                        break
-                                
+        distances = {}
+        for obj in objects:
+            for point in obj.points:
+                distance = (obj.points[point]['z'] - self.coordinates['z'])
+                # print(distance , "distance")
+                distances[obj] = distance
+        
+        sorted_distances = sorted(distances.items(), key=lambda x: x[1])
+        
+        for obj in sorted_distances:
+            if distances[obj[0]] > 0:
+                for vertex in obj[0].vertex:
+                    distance = (obj[0].vertex[vertex][0]['z'] + obj[0].vertex[vertex][1]['z'])/2 - self.coordinates['z']
+                    color = list(obj[0].color)
+                    strength = (-distance / 10)
+                    s = 3/(1+distances[obj[0]]/1000)
+                    for i in range(3):
+                        color[i] += strength
+                        if color[i] < 0:
+                            color[i] = 0
+                        elif color[i] > 255:
+                            color[i] = 255
+                    pygame.draw.line(screen, tuple(color), (int(obj[0].vertex[vertex][0]['x']*s), int(obj[0].vertex[vertex][0]['y'])*s), (int(obj[0].vertex[vertex][1]['x']*s), int(obj[0].vertex[vertex][1]['y'])*s), 1)
+                    # pygame.draw.line(screen, tuple(color), (int(obj[0].vertex[vertex][0]['x']), int(obj[0].vertex[vertex][0]['y'])), (int(obj[0].vertex[vertex][1]['x']), int(obj[0].vertex[vertex][1]['y'])), 1)
+                    
+                    
                             
-cube  = Cube(0, 0, 50, 50, 25, 100, 0, 0, 0)
-camera = Camera(0, 0, 0, 150, 100, 0, 0)
+                        
+                        
+                    
+        # for obj, distance in sorted_distances:
+        # # Apply perspective projection based on the distance
+        #     scale_factor = 1.0 / (1 + distance)  # Adjust this value as needed for your perspective effect
+        #     scaled_points = []
+        #     for point in obj.points:
+        #         x = obj.points[point]['x'] * scale_factor
+        #         y = obj.points[point]['y'] * scale_factor
+        #         scaled_points.append((x, y))
 
+        #     # Draw the object using the scaled points
+        #     pygame.draw.polygon(screen, obj.color, scaled_points)
+    
+
+    def move(self,option, objects):
+        if option == "Forward":
+            test = True
+            # for obj in objects:
+            #     for vertex in obj.vertex:
+            #         print(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z'])
+            #         print((self.coordinates['z']) not in range(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z']))
+            #         print(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x'])
+            #         print((self.coordinates['x']) not in range(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x']))
+            #         if 20 not in range(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z']) and self.coordinates['x'] not in range(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x']):
+            #             test = False
+            #             break
+            if test:
+                for obj in objects:
+                    obj.update_all_data(0, 0, 10)
+                    
+        elif option == "Backward":
+            test = True
+            # for obj in objects:
+            #     for vertex in obj.vertex:
+            #         print(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z'])
+            #         print((self.coordinates['z']) in range(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z']))
+            #         print(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x'])
+            #         print((self.coordinates['x']) in range(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x']))
+            #         if  -20 not in range(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z']) and  self.coordinates['x'] not in range(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x']):
+            #             test = False
+            #             break
+            if test:
+                for obj in objects:
+                    obj.update_all_data(0, 0, -10)
+                    
+        elif option == "Left":
+            test = True
+            # for obj in objects:
+            #     for vertex in obj.vertex:
+            #         print(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z'])
+            #         print(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x'])
+            #         if (self.coordinates['z']) not in range(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z']) and  -20 not in range(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x']):
+            #             test = False
+            #             break
+            if test:
+                for obj in objects:
+                    obj.update_all_data(-10, 0, 0)
+                
+        elif option == "Right":
+            test = True
+            # for obj in objects:
+            #     for vertex in obj.vertex:
+            #         print(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z'])
+            #         print()
+            #         print(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x'])
+            #         if (self.coordinates['z']) not in range(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z']) and 20 not in range(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x']):
+            #             test = False
+            #             break
+            if test:
+                for obj in objects:
+                    obj.update_all_data(10, 0, 0)
+
+
+    def rotate(self,option, objects):
+        for obj in objects:
+            if option == "Q":
+                obj.rotate(0, 1 , 0, self, False)
+            elif option == "E":
+                obj.rotate(0, -1 , 0, self, False)
+                        
+cube = Cube(700, 0, 400, 100, 100, 100, 0, 0, 0, red)
+cube2 = Cube(100, 0, 1000, 1000, 100, 1000, 0, 0, 0, green)
+cube3 = Cube(200, 0, 1200, 100, 100, 100, 0, 0, 0, blue)
+cube4 = Cube(300, 0, 800, 100, 100, 100, 0, 0, 0, white)
+objects = [cube, cube2, cube3, cube4]
+# objects = [cube4]
+
+camera = Camera(0, 0, 0)
+
+
+key_states = {
+    pygame.K_w: False,
+    pygame.K_s: False,
+    pygame.K_a: False,
+    pygame.K_d: False,
+    pygame.K_q: False,
+    pygame.K_e: False,
+}
 
 # Main game loop
 running = True
@@ -140,15 +306,36 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key in key_states:
+                key_states[event.key] = True
+        if event.type == pygame.KEYUP:
+            if event.key in key_states:
+                key_states[event.key] = False
+
+    if key_states[pygame.K_w]:
+        camera.move("Forward", objects=objects)
+    if key_states[pygame.K_s]:
+        camera.move("Backward", objects=objects)
+    if key_states[pygame.K_a]:
+        camera.move("Left", objects=objects)
+    if key_states[pygame.K_d]:
+        camera.move("Right", objects=objects)
+    if key_states[pygame.K_q]:
+        camera.rotate("Q", objects=objects)
+    if key_states[pygame.K_e]:
+        camera.rotate("E", objects=objects)
 
     # Clear the screen
     screen.fill(black)
 
     # Render the cube
-    camera.render([cube])
+    camera.render(objects=objects)
 
     # Update the display
     pygame.display.update()
+    # set fps
+    pygame.time.Clock().tick(24)
 
 # Quit Pygame
 pygame.quit()
