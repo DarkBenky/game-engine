@@ -7,6 +7,7 @@ pygame.init()
 
 # Screen dimensions
 width, height = 1000, 800
+width_center, height_center =  height // 2 , width // 2
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Render Square")
 
@@ -160,6 +161,21 @@ class Cube():
             self.points[point]['x'] += x
             self.points[point]['y'] += y
             self.points[point]['z'] += z
+    
+    def check_if_point_in(self , point):
+        x, y, z = point['x'], point['y'], point['z']
+        print(x, y, z)
+        print(self.points['A']['x'] , self.points['B']['x'], 'and point is' , x)
+        print(self.points['A']['y'] , self.points['G']['y'], 'and point is' , y)
+        print(self.points['A']['z'] , self.points['E']['z'], 'and point is' , z)
+        if (
+            self.points['A']['x'] <= x <= self.points['B']['x'] and
+            self.points['A']['y'] <= y <= self.points['D']['y'] and
+            self.points['A']['z'] <= z <= self.points['H']['z']
+        ):
+            print("True")
+            return True
+        return False
         
 
 
@@ -176,26 +192,35 @@ class Camera():
         for obj in objects:
             for point in obj.points:
                 distance = (obj.points[point]['z'] - self.coordinates['z'])
-                # print(distance , "distance")
+                
+                print(distance , "distance")
                 distances[obj] = distance
         
         sorted_distances = sorted(distances.items(), key=lambda x: x[1])
         
         for obj in sorted_distances:
-            if distances[obj[0]] > 0:
+            # if distances[obj[0]] > -300:
                 for vertex in obj[0].vertex:
                     distance = (obj[0].vertex[vertex][0]['z'] + obj[0].vertex[vertex][1]['z'])/2 - self.coordinates['z']
                     color = list(obj[0].color)
                     strength = (-distance / 10)
-                    s = 3/(1+distances[obj[0]]/1000)
+                    s = 3/(1+distances[obj[0]]/1001)
                     for i in range(3):
                         color[i] += strength
                         if color[i] < 0:
                             color[i] = 0
                         elif color[i] > 255:
                             color[i] = 255
-                    pygame.draw.line(screen, tuple(color), (int(obj[0].vertex[vertex][0]['x']*s), int(obj[0].vertex[vertex][0]['y'])*s), (int(obj[0].vertex[vertex][1]['x']*s), int(obj[0].vertex[vertex][1]['y'])*s), 1)
-                    # pygame.draw.line(screen, tuple(color), (int(obj[0].vertex[vertex][0]['x']), int(obj[0].vertex[vertex][0]['y'])), (int(obj[0].vertex[vertex][1]['x']), int(obj[0].vertex[vertex][1]['y'])), 1)
+                    pygame.draw.line(screen, tuple(color),
+                                     (
+                                         int(obj[0].vertex[vertex][0]['x']*s + width_center),
+                                         int(obj[0].vertex[vertex][0]['y']*s + height_center) 
+                                     ), 
+                                    (
+                                        int(obj[0].vertex[vertex][1]['x']*s + width_center),
+                                        int(obj[0].vertex[vertex][1]['y']*s + height_center)
+                                    ), 1)
+                    # pygame.draw.line(screen, tuple(color), (int((obj[0].vertex[vertex][0]['x'] + width_center) * s), int((obj[0].vertex[vertex][0]['y']+ height_center) *s)), (int((obj[0].vertex[vertex][1]['x'] + width_center) *s), int((obj[0].vertex[vertex][1]['y'] + height_center )* s)), 1)
                     
                     
                             
@@ -218,60 +243,63 @@ class Camera():
     def move(self,option, objects):
         if option == "Forward":
             test = True
-            # for obj in objects:
-            #     for vertex in obj.vertex:
-            #         print(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z'])
-            #         print((self.coordinates['z']) not in range(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z']))
-            #         print(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x'])
-            #         print((self.coordinates['x']) not in range(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x']))
-            #         if 20 not in range(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z']) and self.coordinates['x'] not in range(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x']):
-            #             test = False
-            #             break
+            cor = self.coordinates.copy()
+            cor['z'] += 10
+            for obj in objects:
+                if obj.check_if_point_in(cor):
+                    test = False
+                    break
             if test:
                 for obj in objects:
                     obj.update_all_data(0, 0, 10)
+            else:
+                for obj in objects:
+                    obj.update_all_data(0, 0, -100)
                     
         elif option == "Backward":
             test = True
-            # for obj in objects:
-            #     for vertex in obj.vertex:
-            #         print(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z'])
-            #         print((self.coordinates['z']) in range(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z']))
-            #         print(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x'])
-            #         print((self.coordinates['x']) in range(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x']))
-            #         if  -20 not in range(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z']) and  self.coordinates['x'] not in range(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x']):
-            #             test = False
-            #             break
+            cor = self.coordinates.copy()
+            cor['z'] -= 10
+            for obj in objects:
+                if obj.check_if_point_in(cor):
+                    test = False
+                    break
             if test:
                 for obj in objects:
                     obj.update_all_data(0, 0, -10)
+            else:
+                for obj in objects:
+                    obj.update_all_data(0, 0, 100)
                     
         elif option == "Left":
             test = True
-            # for obj in objects:
-            #     for vertex in obj.vertex:
-            #         print(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z'])
-            #         print(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x'])
-            #         if (self.coordinates['z']) not in range(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z']) and  -20 not in range(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x']):
-            #             test = False
-            #             break
+            cor = self.coordinates.copy()
+            cor['x'] -= 10
+            for obj in objects:
+                if obj.check_if_point_in(cor):
+                    test = False
+                    break
             if test:
                 for obj in objects:
                     obj.update_all_data(-10, 0, 0)
+            else:
+                for obj in objects:
+                    obj.update_all_data(10, 0, 0)
                 
         elif option == "Right":
             test = True
-            # for obj in objects:
-            #     for vertex in obj.vertex:
-            #         print(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z'])
-            #         print()
-            #         print(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x'])
-            #         if (self.coordinates['z']) not in range(obj.vertex[vertex][0]['z'] , obj.vertex[vertex][1]['z']) and 20 not in range(obj.vertex[vertex][0]['x'] , obj.vertex[vertex][1]['x']):
-            #             test = False
-            #             break
+            cor = self.coordinates.copy()
+            cor['x'] += 10
+            for obj in objects:
+                if obj.check_if_point_in(cor):
+                    test = False
+                    break
             if test:
                 for obj in objects:
                     obj.update_all_data(10, 0, 0)
+            else:
+                for obj in objects:
+                    obj.update_all_data(-10, 0, 0)
 
 
     def rotate(self,option, objects):
@@ -281,12 +309,12 @@ class Camera():
             elif option == "E":
                 obj.rotate(0, -1 , 0, self, False)
                         
-cube = Cube(700, 0, 400, 100, 100, 100, 0, 0, 0, red)
-cube2 = Cube(100, 0, 1000, 1000, 100, 1000, 0, 0, 0, green)
-cube3 = Cube(200, 0, 1200, 100, 100, 100, 0, 0, 0, blue)
-cube4 = Cube(300, 0, 800, 100, 100, 100, 0, 0, 0, white)
-objects = [cube, cube2, cube3, cube4]
-# objects = [cube4]
+cube = Cube(400, 0, 100, 500, 500, 100, 0, 0, 0, red)
+cube2 = Cube(-200, 0, -500, 100, 100, 100, 0, 0, 0, green)
+cube3 = Cube(200, 0, 120, 100, 100, 100, 0, 0, 0, blue)
+cube4 = Cube(0, 0, 200, 400, 500, 100, 0, 0, 0, white)
+# objects = [cube, cube2, cube3, cube4]
+objects = [cube4 , cube2]
 
 camera = Camera(0, 0, 0)
 
