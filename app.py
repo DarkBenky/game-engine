@@ -101,14 +101,8 @@ class Cube():
         }
     
     
-    def rotate(self, x_rotation, y_rotation, z_rotation, camera , stay_center=True):
-        # If not staying at the center, calculate the offset from the camera's position
-        if stay_center == False:
-            x_offset = self.coordinates['x'] - camera.coordinates['x']
-            y_offset = self.coordinates['y'] - camera.coordinates['y']
-            z_offset = self.coordinates['z'] - camera.coordinates['z']
-        else:
-            x_offset, y_offset, z_offset = 0, 0, 0
+    def rotate(self, x_rotation, y_rotation, z_rotation):
+        x_offset, y_offset, z_offset = 0, 0, 0
 
         # Translate the object to the origin
         for point in self.points:
@@ -176,7 +170,12 @@ class Cube():
             print("True")
             return True
         return False
-        
+
+def calculate_distance(point1, point2):
+    # check if the points are behind the camera
+    if point1['z'] < 0 or point2['z'] < 0:
+        return -math.sqrt((point1['x'] - point2['x'])**2 + (point1['y'] - point2['y'])**2 + (point1['z'] - point2['z'])**2)
+    return math.sqrt((point1['x'] - point2['x'])**2 + (point1['y'] - point2['y'])**2 + (point1['z'] - point2['z'])**2)
 
 
 class Camera():
@@ -191,54 +190,40 @@ class Camera():
         distances = {}
         for obj in objects:
             for point in obj.points:
-                distance = (obj.points[point]['z'] - self.coordinates['z'])
-                
+                # distance = (obj.points[point]['z'] - self.coordinates['z'])
+                distance = calculate_distance(obj.points[point], self.coordinates)
                 print(distance , "distance")
                 distances[obj] = distance
         
         sorted_distances = sorted(distances.items(), key=lambda x: x[1])
         
         for obj in sorted_distances:
-            # if distances[obj[0]] > -300:
-                for vertex in obj[0].vertex:
-                    distance = (obj[0].vertex[vertex][0]['z'] + obj[0].vertex[vertex][1]['z'])/2 - self.coordinates['z']
-                    color = list(obj[0].color)
-                    strength = (-distance / 10)
+            if distances[obj[0]]:
+                scaled_points = []
+                color_strength = []
+                for point in obj[0].points:
+                    
                     s = 3/(1+distances[obj[0]]/1001)
+                    strength = (1 / (distances[obj[0]] / 1000))
+                    
+                    color = list(obj[0].color)
                     for i in range(3):
-                        color[i] += strength
+                        color[i] = int(color[i] * strength)
                         if color[i] < 0:
                             color[i] = 0
                         elif color[i] > 255:
                             color[i] = 255
-                    pygame.draw.line(screen, tuple(color),
-                                     (
-                                         int(obj[0].vertex[vertex][0]['x']*s + width_center),
-                                         int(obj[0].vertex[vertex][0]['y']*s + height_center) 
-                                     ), 
-                                    (
-                                        int(obj[0].vertex[vertex][1]['x']*s + width_center),
-                                        int(obj[0].vertex[vertex][1]['y']*s + height_center)
-                                    ), 1)
-                    # pygame.draw.line(screen, tuple(color), (int((obj[0].vertex[vertex][0]['x'] + width_center) * s), int((obj[0].vertex[vertex][0]['y']+ height_center) *s)), (int((obj[0].vertex[vertex][1]['x'] + width_center) *s), int((obj[0].vertex[vertex][1]['y'] + height_center )* s)), 1)
                     
+                    color_strength.append(color)
+                     
+                    x = obj[0].points[point]['x'] * s + width_center
+                    y = obj[0].points[point]['y'] * s + height_center
                     
-                            
-                        
-                        
-                    
-        # for obj, distance in sorted_distances:
-        # # Apply perspective projection based on the distance
-        #     scale_factor = 1.0 / (1 + distance)  # Adjust this value as needed for your perspective effect
-        #     scaled_points = []
-        #     for point in obj.points:
-        #         x = obj.points[point]['x'] * scale_factor
-        #         y = obj.points[point]['y'] * scale_factor
-        #         scaled_points.append((x, y))
+                    scaled_points.append((x, y))
 
-        #     # Draw the object using the scaled points
-        #     pygame.draw.polygon(screen, obj.color, scaled_points)
-    
+                for i in range(len(scaled_points)):
+                    for j in range(len(scaled_points)):
+                        pygame.draw.line(screen, color_strength[j] , scaled_points[i], scaled_points[j], 1)                   
 
     def move(self,option, objects):
         if option == "Forward":
@@ -305,12 +290,12 @@ class Camera():
     def rotate(self,option, objects):
         for obj in objects:
             if option == "Q":
-                obj.rotate(0, 1 , 0, self, False)
+                obj.rotate(0, 2, 0)
             elif option == "E":
-                obj.rotate(0, -1 , 0, self, False)
+                obj.rotate(0, -2, 0)
                         
 cube = Cube(400, 0, 100, 500, 500, 100, 0, 0, 0, red)
-cube2 = Cube(-200, 0, -500, 100, 100, 100, 0, 0, 0, green)
+cube2 = Cube(-200, -300, -500, 100, 100, 100, 0, 0, 0, green)
 cube3 = Cube(200, 0, 120, 100, 100, 100, 0, 0, 0, blue)
 cube4 = Cube(0, 0, 200, 400, 500, 100, 0, 0, 0, white)
 # objects = [cube, cube2, cube3, cube4]
@@ -339,24 +324,24 @@ while running:
                 key_states[event.key] = True
         if event.type == pygame.KEYUP:
             if event.key in key_states:
-                key_states[event.key] = False
+                key_states[event.key] = False         
 
     if key_states[pygame.K_w]:
-        camera.move("Forward", objects=objects)
-    if key_states[pygame.K_s]:
         camera.move("Backward", objects=objects)
+    if key_states[pygame.K_s]:
+        camera.move("Forward", objects=objects)
     if key_states[pygame.K_a]:
-        camera.move("Left", objects=objects)
-    if key_states[pygame.K_d]:
         camera.move("Right", objects=objects)
+    if key_states[pygame.K_d]:
+        camera.move("Left", objects=objects)
     if key_states[pygame.K_q]:
-        camera.rotate("Q", objects=objects)
+        camera.rotate("Q" , objects=objects)
     if key_states[pygame.K_e]:
-        camera.rotate("E", objects=objects)
+        camera.rotate("E" , objects=objects)
 
     # Clear the screen
     screen.fill(black)
-
+    
     # Render the cube
     camera.render(objects=objects)
 
