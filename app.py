@@ -1,13 +1,15 @@
 import pygame
 import sys
 import math
+import pickle
+from itertools import combinations
 
 # Initialize Pygame
 pygame.init()
 
 # Screen dimensions
 width, height = 1000, 800
-width_center, height_center =  height // 2 , width // 2
+width_center, height_center =  height // 2, width // 2 -250
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Render Square")
 
@@ -17,11 +19,6 @@ red = (255, 0, 0)
 black = (0, 0, 0)
 green = (0, 255, 0)
 blue  = (0, 0, 255)
-
-# Square properties
-square_size = 100
-square_x = (width - square_size) // 2
-square_y = (height - square_size) // 2
 
 
 
@@ -190,10 +187,12 @@ class Camera():
         distances = {}
         for obj in objects:
             for point in obj.points:
-                # distance = (obj.points[point]['z'] - self.coordinates['z'])
-                distance = calculate_distance(obj.points[point], self.coordinates)
+                distance = (obj.points[point]['z'] - self.coordinates['z'])
+                distance_ = calculate_distance(obj.points[point], self.coordinates)
                 print(distance , "distance")
-                distances[obj] = distance
+                distances[obj] = (distance , distance_)
+                
+                
         
         sorted_distances = sorted(distances.items(), key=lambda x: x[1])
         
@@ -201,10 +200,11 @@ class Camera():
             if distances[obj[0]]:
                 scaled_points = []
                 color_strength = []
+                lines_strength = []
                 for point in obj[0].points:
                     
-                    s = 3/(1+distances[obj[0]]/1001)
-                    strength = (1 / (distances[obj[0]] / 1000))
+                    s = 3/(1+distances[obj[0]][0]/2001)
+                    strength = (1 / (distances[obj[0]][0] / 500))
                     
                     color = list(obj[0].color)
                     for i in range(3):
@@ -215,16 +215,25 @@ class Camera():
                             color[i] = 255
                     
                     color_strength.append(color)
+                    
+                    line_strength = int(1 + math.sqrt(distances[obj[0]][1] * (math.sqrt(distances[obj[0]][1]) / 3000)))
+                    lines_strength.append(line_strength)
                      
                     x = obj[0].points[point]['x'] * s + width_center
                     y = obj[0].points[point]['y'] * s + height_center
                     
                     scaled_points.append((x, y))
+                
+                combinations_list = list(combinations(scaled_points, 3))
+
+                for i in range(len(combinations_list)):
+                    pygame.draw.polygon(screen, color_strength[0], combinations_list[i])
 
                 for i in range(len(scaled_points)):
                     for j in range(len(scaled_points)):
-                        pygame.draw.line(screen, color_strength[j] , scaled_points[i], scaled_points[j], 1)                   
-
+                        pygame.draw.line(screen, black , scaled_points[i], scaled_points[j], lines_strength[i])
+                        
+                            
     def move(self,option, objects):
         if option == "Forward":
             test = True
@@ -295,11 +304,20 @@ class Camera():
                 obj.rotate(0, -2, 0)
                         
 cube = Cube(400, 0, 100, 500, 500, 100, 0, 0, 0, red)
-cube2 = Cube(-200, -300, -500, 100, 100, 100, 0, 0, 0, green)
+cube2 = Cube(200, 200, 500, 100, 100, 100, 0, 0, 0, green)
 cube3 = Cube(200, 0, 120, 100, 100, 100, 0, 0, 0, blue)
 cube4 = Cube(0, 0, 200, 400, 500, 100, 0, 0, 0, white)
 # objects = [cube, cube2, cube3, cube4]
-objects = [cube4 , cube2]
+objects = [cube4 , cube2]#
+
+# objects = pickle.load(open("map", "rb"))
+# for obj in objects:
+#     for point in obj.points.keys():
+#         try:
+#             obj.points[point] = (obj.points[point][0])
+#         except:
+#             pass
+
 
 camera = Camera(0, 0, 0)
 
